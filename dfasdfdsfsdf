@@ -1,0 +1,62 @@
+from selenium import webdriver as wd
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+import requests
+import re
+import time
+from selenium.webdriver.chrome.options import Options
+from bs4 import BeautifulSoup
+import pandas as pd
+
+options = Options()
+
+# chrome을 전체화면으로 넓히는 옵션입니다.
+options.add_argument('--start-fullscreen')
+
+#제품 URL 기입
+global_url='https://www.mediamarkt.de/de/product/_lg-oled55c8lla-2391633.html'
+driver=wd.Chrome(executable_path = 'chromedriver.exe',chrome_options=options)
+driver.get(global_url)
+driver.implicitly_wait(10)
+
+
+res=driver.page_source
+html=BeautifulSoup(res,'html.parser')
+date_list=[]
+title_list=[]
+rating_list=[]
+i=0
+
+while i <= 5:
+    Date=html.findAll('span',{'class':'mms-review-head__date'})
+    for i in range(len(Date)):
+        date_list.append(Date[i].text)
+
+    title=html.findAll('strong',{'class':'mms-headline'})
+    for j in range(len(title)):
+        title_list.append(title[j].text)
+
+    reviews=html.findAll('div',{'class':'mms-review'})
+    obj=pd.DataFrame(reviews)
+    for u in range(len(obj)):
+        rating_list.append(str(obj[0][u]).count('#DF0000'))
+
+
+    next=html.findAll('div',{'class':'reviews-pagination-wrapper'})
+    if len(next)==1:
+        driver.find_element_by_xpath('//*[@id="reviews"]/div[2]/div/div/div/div[12]/button').click()
+    elif len(next)==2:
+        driver.find_element_by_xpath('//*[@id="reviews"]/div[2]/div/div/div/div[12]/button[2]').click()
+
+
+    try:
+        WebDriverWait(driver, 35).until(
+        # 지정한 한개 요소가 올라면 웨이트 종료
+            EC.presence_of_element_located((By.XPATH, '//*[@id="reviews"]/div[2]/div/div/div/div[12]/button[2]'))
+        )
+    except Exception as e:
+        print( '오류 발생', e)
+
+    time.sleep(3)
+    i+=1
